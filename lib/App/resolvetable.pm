@@ -8,7 +8,52 @@ use strict;
 use warnings;
 use Log::ger;
 
+use Color::ANSI::Util qw(ansifg);
+
 our %SPEC;
+
+# colorize majority values with green, minority values with red
+sub _colorize_maj_min {
+    my $hash = shift;
+
+    my %freq;
+    my @keys = keys %$hash;
+    for (@keys) {
+        next unless defined $hash->{$_};
+        next if $_ eq 'name';
+        $freq{ $hash->{$_} }++;
+    }
+    my @vals_by_freq = sort { $freq{$b} <=> $freq{$a} } keys %freq;
+
+    # no defined values
+    return unless @vals_by_freq;
+
+    my $green = "33cc33";
+    my $red   = "33cc33";
+
+    my %colors_by_val;
+    my $freq;
+    my $decreased;
+    for my $val (@vals_by_freq) {
+        if (!defined $freq) {
+            $freq = $freq{$val};
+            $colors_by_val{$val} = $green;
+            next;
+        }
+        if (!$decreased) {
+            if ($freq > $freq{$val}) {
+                $decreased++;
+            }
+        }
+        $colors_by_val{$val} = $decreased ? $red : $green;
+    }
+    for (@keys) {
+        my $val = $hash->{$_};
+        next unless defined $val;
+        next if $_ eq 'name';
+        $hash->{$_} = ansifg($colors_by_val{$val}) . $hash->{$_} . "\e[0m";
+    }
+}
 
 $SPEC{'resolvetable'} = {
     v => 1.1,
@@ -37,6 +82,9 @@ $SPEC{'resolvetable'} = {
             default => 'A',
             cmdline_aliases => {t=>{}},
         },
+        colorize => {
+            schema => 'bool*',
+        },
     },
 };
 sub resolvetable {
@@ -57,9 +105,9 @@ sub resolvetable {
                 Nameservers => [$server],
                 Callback    => sub {
                     my $pkt = shift;
+                    return unless defined $pkt;
                     my @rr = $pkt->answer;
                     for my $r (@rr) {
-                        use DD; dd $r;
                         my $k = $r->owner;
                         $res{ $k }{$server} //= "";
                         $res{ $k }{$server} .=
@@ -74,15 +122,17 @@ sub resolvetable {
     $resolver->await;
 
     log_trace "Returning table result ...";
-    my @res;
+    my @rows;
     for my $name (@$names) {
-        push @res, {
+        my $row = {
             name => $name,
             map { $_ => $res{$name}{$_} } @$servers,
         };
+        _colorize_maj_min($row) if $args{colorize};
+        push @rows, $row;
     }
 
-    [200, "OK", \@res, {'table.fields'=>['name']}];
+    [200, "OK", \@rows, {'table.fields'=>['name', @$servers]}];
 }
 
 1;
