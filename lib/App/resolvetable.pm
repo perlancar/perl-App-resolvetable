@@ -86,6 +86,14 @@ $SPEC{'resolvetable'} = {
             schema => 'bool*',
         },
     },
+    examples => [
+        {
+            src => 'cat names.txt | [[prog]] --colorize -s 8.8.8.8 -s my.dns.server -s my2.dns.server',
+            src_plang => 'bash',
+            test => 0,
+            'x.doc.show_result' => 0,
+        },
+    ],
 };
 sub resolvetable {
     require Net::DNS::Async;
