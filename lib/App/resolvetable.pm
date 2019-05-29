@@ -9,6 +9,7 @@ use warnings;
 use Log::ger;
 
 use Color::ANSI::Util qw(ansifg);
+use Time::HiRes qw(time);
 
 our %SPEC;
 
@@ -49,10 +50,18 @@ sub _colorize_maj_min {
     }
     for (@keys) {
         my $val = $hash->{$_};
-        do { $hash->{$_} = ansifg("ff0000")."X"."\e[0m"; next }
-            unless defined $val;
+        next unless defined $val;
         next if $_ eq 'name';
         $hash->{$_} = ansifg($colors_by_val{$val}) . $hash->{$_} . "\e[0m";
+    }
+}
+
+sub _mark_undef_with_x {
+    my $row = shift;
+    for (keys %$row) {
+        next if $_ eq 'name';
+        next if defined $row->{$_};
+        $row->{$_} = ansifg("ff0000")."X"."\e[0m";
     }
 }
 
@@ -61,6 +70,20 @@ $SPEC{'resolvetable'} = {
     summary => 'Produce a colored table containing DNS resolve results of '.
         'several names from several servers',
     args => {
+        action => {
+            schema => ['str*', in=>[qw/show-addresses show-times/]],
+            default => 'show-addresses',
+            cmdline_aliases => {
+                times => {is_flag=>1, summary=>'Shortcut for --action=show-times', code=>sub { $_[0]{action} = 'show-times' }},
+            },
+            description => <<'_',
+
+The default action is to show resolve result (`show-addresses`). If set to
+`show-times`, will show resolve times instead to compare speed among DNS
+servers.
+
+_
+        },
         servers => {
             'x.name.is_plural' => 1,
             'x.name.singular' => 'server',
@@ -103,16 +126,21 @@ sub resolvetable {
     my $type = $args{type} // "A";
     my $names   = $args{names};
     my $servers = $args{servers};
+    my $action  = $args{action} // 'show-addresses';
 
-    my %res; # key=name, val={server=>result, ...}
+    my %res;       # key=name, val={server=>result, ...}
+    my %starttime; # key=name, val={server=>time, ...}
+    my %endtime  ; # key=name, val={server=>time, ...}
 
     log_info "Resolving ...";
     my $resolver = Net::DNS::Async->new(QueueSize => 30, Retries => 2);
     for my $name (@$names) {
         for my $server (@$servers) {
+            $starttime{$name}{$server} = time();
             $resolver->add({
                 Nameservers => [$server],
                 Callback    => sub {
+                    my $time = time();
                     my $pkt = shift;
                     return unless defined $pkt;
                     my @rr = $pkt->answer;
@@ -123,6 +151,7 @@ sub resolvetable {
                             (length($res{ $k }{$server}) ? ", ":"") .
                             $r->address
                             if $r->type eq $type;
+                        $endtime{$name}{$server} //= $time;
                     }
                 },
             }, $name, $args{type});
@@ -133,11 +162,41 @@ sub resolvetable {
     log_trace "Returning table result ...";
     my @rows;
     for my $name (@$names) {
-        my $row = {
-            name => $name,
-            map { $_ => $res{$name}{$_} } @$servers,
-        };
-        _colorize_maj_min($row) if $args{colorize};
+        my $row;
+        if ($action eq 'show-addresses') {
+            $row = {
+                name => $name,
+                map { $_ => $res{$name}{$_} } @$servers,
+            };
+            _colorize_maj_min($row) if $args{colorize};
+            _mark_undef_with_x($row) if $args{colorize};
+        } elsif ($action eq 'show-times') {
+            $row = {
+                name => $name,
+                map {
+                    my $server = $_;
+                    my $starttime = $starttime{$name}{$_};
+                    my $endtime   = $endtime{$name}{$_};
+                    my $val;
+                    if (defined $endtime) {
+                        my $ms = ($endtime - $starttime)*1000;
+                        if ($ms > 4000) {
+                            $val = ">4000ms";
+                        } elsif ($ms < 1) {
+                            $val = "   <1ms";
+                        } else {
+                            $val = sprintf("%3.0fms", $ms);
+                        }
+                    } else {
+                        $val = undef;
+                    }
+                    ($server => $val);
+                } @$servers,
+            };
+        } else {
+            die "Unknown action '$action'";
+        }
+        _mark_undef_with_x($row) if $args{colorize};
         push @rows, $row;
     }
 
