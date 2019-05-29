@@ -49,7 +49,8 @@ sub _colorize_maj_min {
     }
     for (@keys) {
         my $val = $hash->{$_};
-        next unless defined $val;
+        do { $hash->{$_} = ansifg("ff0000")."X"."\e[0m"; next }
+            unless defined $val;
         next if $_ eq 'name';
         $hash->{$_} = ansifg($colors_by_val{$val}) . $hash->{$_} . "\e[0m";
     }
