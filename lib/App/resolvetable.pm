@@ -237,3 +237,16 @@ sub resolvetable {
 
 1;
 # ABSTRACT:
+
+=head1 DESCRIPTION
+
+Sample screenshot 1 (with C<--colorize>):
+
+# IMAGE: share/images/Screenshot_20190530_111051.png
+
+Sample screenshot 2 (with C<--colorize --timings>):
+
+# IMAGE: share/images/Screenshot_20190530_112052.png
+
+
+=head1 SEE ALSO
