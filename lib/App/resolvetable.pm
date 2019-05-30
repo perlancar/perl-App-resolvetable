@@ -56,6 +56,37 @@ sub _colorize_maj_min {
     }
 }
 
+# colorize the shortest time with green
+sub _colorize_shortest_time {
+    my $hash = shift;
+    no warnings 'numeric';
+
+    my %time;
+    my @keys = keys %$hash;
+    for (@keys) {
+        next unless defined $hash->{$_};
+        next if $_ eq 'name';
+        my $time =
+            $hash->{$_} =~ /^\s*</ ? 0.01 :
+            $hash->{$_} =~ /^\s*>/ ? 4001 : $hash->{$_}+0;
+        $time{ $hash->{$_} } = $time;
+    }
+    my @times_from_shortest = sort { $time{$a} <=> $time{$b} } keys %time;
+
+    # no defined values
+    return unless @times_from_shortest;
+
+    my $green = "33cc33";
+
+    for (@keys) {
+        my $val = $hash->{$_};
+        next unless defined $val;
+        next if $_ eq 'name';
+        $hash->{$_} = ansifg($green) . $hash->{$_} . "\e[0m"
+            if $hash->{$_} eq $times_from_shortest[0];
+    }
+}
+
 sub _mark_undef_with_x {
     my $row = shift;
     for (keys %$row) {
@@ -182,8 +213,8 @@ sub resolvetable {
                         my $ms = ($endtime - $starttime)*1000;
                         if ($ms > 4000) {
                             $val = ">4000ms";
-                        } elsif ($ms < 1) {
-                            $val = "   <1ms";
+                        } elsif ($ms <= 0.5) {
+                            $val = "<=0.5ms";
                         } else {
                             $val = sprintf("%3.0fms", $ms);
                         }
@@ -196,7 +227,8 @@ sub resolvetable {
         } else {
             die "Unknown action '$action'";
         }
-        _mark_undef_with_x($row) if $args{colorize};
+        _colorize_shortest_time($row) if $args{colorize};
+        _mark_undef_with_x($row)      if $args{colorize};
         push @rows, $row;
     }
 
