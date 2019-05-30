@@ -68,19 +68,19 @@ sub _mark_undef_with_x {
 $SPEC{'resolvetable'} = {
     v => 1.1,
     summary => 'Produce a colored table containing DNS resolve results of '.
-        'several names from several servers',
+        'several names from several servers/resolvers',
     args => {
         action => {
-            schema => ['str*', in=>[qw/show-addresses show-times/]],
+            schema => ['str*', in=>[qw/show-addresses show-timings/]],
             default => 'show-addresses',
             cmdline_aliases => {
-                times => {is_flag=>1, summary=>'Shortcut for --action=show-times', code=>sub { $_[0]{action} = 'show-times' }},
+                timings => {is_flag=>1, summary=>'Shortcut for --action=show-timings', code=>sub { $_[0]{action} = 'show-timings' }},
             },
             description => <<'_',
 
 The default action is to show resolve result (`show-addresses`). If set to
-`show-times`, will show resolve times instead to compare speed among DNS
-servers.
+`show-timings`, will show resolve times instead to compare speed among DNS
+servers/resolvers.
 
 _
         },
@@ -170,7 +170,7 @@ sub resolvetable {
             };
             _colorize_maj_min($row) if $args{colorize};
             _mark_undef_with_x($row) if $args{colorize};
-        } elsif ($action eq 'show-times') {
+        } elsif ($action eq 'show-timings') {
             $row = {
                 name => $name,
                 map {
