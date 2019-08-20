@@ -139,11 +139,12 @@ _
         },
         colorize => {
             schema => 'bool*',
+            default => 1,
         },
     },
     examples => [
         {
-            src => 'cat names.txt | [[prog]] --colorize -s 8.8.8.8 -s my.dns.server -s my2.dns.server',
+            src => 'cat names.txt | [[prog]] -s 8.8.8.8 -s my.dns.server -s my2.dns.server',
             src_plang => 'bash',
             test => 0,
             'x.doc.show_result' => 0,
@@ -240,11 +241,11 @@ sub resolvetable {
 
 =head1 DESCRIPTION
 
-Sample screenshot 1 (with C<--colorize>):
+Sample screenshot 1:
 
 # IMAGE: share/images/Screenshot_20190530_111051.png
 
-Sample screenshot 2 (with C<--colorize --timings>):
+Sample screenshot 2 (with C<--timings>):
 
 # IMAGE: share/images/Screenshot_20190530_112052.png
 
