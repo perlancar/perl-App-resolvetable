@@ -292,5 +292,9 @@ Sample screenshot 2 (with C<--timings>):
 
 # IMAGE: share/images/Screenshot_20190530_112052.png
 
+Sample screenshot 3 (with C<--compare>):
+
+# IMAGE: share/images/Screenshot_20190820_235000-redacted.png
+
 
 =head1 SEE ALSO
